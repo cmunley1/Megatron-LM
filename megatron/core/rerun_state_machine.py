@@ -27,7 +27,25 @@ Also note that experimental features may break existing APIs.
 """
 
 logger = logging.getLogger(__name__)
+####
+# Set the logging level to WARNING
+logger.setLevel(logging.WARNING)
 
+# Check if the logger already has handlers to avoid duplicate logs
+if not logger.hasHandlers():
+    # Create a console handler
+    console_handler = logging.StreamHandler()
+    
+    # Set the level for the handler
+    console_handler.setLevel(logging.WARNING)
+    
+    # Create a formatter and set it for the handler
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    
+    # Add the handler to the logger
+    logger.addHandler(console_handler)
+####
 _GLOBAL_RERUN_STATE_MACHINE: Optional["RerunStateMachine"] = None
 
 # Exit code returned when job needs to be restarted to disambiguate the results.
@@ -1088,6 +1106,55 @@ def get_rerun_state_machine() -> RerunStateMachine:
         logger.warning("Implicit initialization of Rerun State Machine!")
         initialize_rerun_state_machine()
     return _GLOBAL_RERUN_STATE_MACHINE
+
+def get_rerun_state_machine_with_injection(
+    error_injection_rate: int = 2,
+    error_injection_type: RerunDiagnostic = RerunDiagnostic.PERSISTENT_ERROR,
+    mode: RerunMode = RerunMode.VALIDATE_RESULTS,
+    state_save_func: Optional[Callable[[], SerializableStateType]] = None,
+    state_restore_func: Optional[Callable[[SerializableStateType], None]] = None,
+) -> RerunStateMachine:
+    """
+    Helper function to return the singleton instance of the rerun machine with error injection.
+    
+    This function will:
+      - Check if _GLOBAL_RERUN_STATE_MACHINE is None.
+      - If it is, we initialize a new RerunStateMachine in the given mode.
+      - Attach an error injector configured with 'error_injection_rate' and 'error_injection_type'.
+
+    Args:
+        error_injection_rate (int, optional):
+            Number that controls how frequently to inject an error (e.g. 100 => about once in 100 calls).
+            Default is 100.
+        error_injection_type (RerunDiagnostic, optional):
+            What kind of error to inject. Can be TRANSIENT_ERROR, PERSISTENT_ERROR, or CORRECT_RESULT.
+            Default is RerunDiagnostic.TRANSIENT_ERROR.
+        mode (RerunMode, optional):
+            Operating mode for the rerun state machine. Defaults to VALIDATE_RESULTS.
+        state_save_func (callable, optional):
+            Callback for saving any additional per-iteration state; see RerunStateMachine docs.
+        state_restore_func (callable, optional):
+            Callback for restoring that state. Must mirror the logic in state_save_func.
+
+    Returns:
+        RerunStateMachine: the global RerunStateMachine instance with error injection configured.
+    """
+    global _GLOBAL_RERUN_STATE_MACHINE
+
+    if _GLOBAL_RERUN_STATE_MACHINE is None:
+        logger.warning("Implicit initialization of Rerun State Machine with error injection!")
+        error_injector = RerunErrorInjector(
+            error_injection_rate=error_injection_rate,
+            error_injection_type=error_injection_type,
+        )
+        initialize_rerun_state_machine(
+            state_save_func=state_save_func,
+            state_restore_func=state_restore_func,
+            mode=mode,
+            error_injector=error_injector,
+        )
+    return _GLOBAL_RERUN_STATE_MACHINE
+
 
 
 def _set_rerun_state_machine(rerun_state_machine) -> None:

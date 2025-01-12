@@ -1,3 +1,6 @@
+datasets/
+chris/
+tensorboard_logs/
 __pycache__
 *.so
 build

@@ -204,7 +204,7 @@ use_checkpoint_args: False
 exit_on_missing_checkpoint: False
 
 # loss arguments
-loss_scale: null
+loss_scale: 1
 initial_loss_scale: 4294967296
 min_loss_scale: 1.0
 loss_scale_window: 1000 

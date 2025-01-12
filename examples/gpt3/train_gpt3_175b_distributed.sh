@@ -12,11 +12,11 @@ NUM_NODES=1
 NODE_RANK=0
 WORLD_SIZE=$(($GPUS_PER_NODE*$NUM_NODES))
 
-CHECKPOINT_PATH=$1 #<Specify path>
-TENSORBOARD_LOGS_PATH=$2 #<Specify path>
-VOCAB_FILE=$3 #<Specify path to file>/gpt2-vocab.json
-MERGE_FILE=$4 #<Specify path to file>/gpt2-merges.txt
-DATA_PATH=$5 #<Specify path and file prefix>_text_document
+CHECKPOINT_PATH=/workspace/megatron/checkpoints
+TENSORBOARD_LOGS_PATH=/workspace/megatron/tensorboard_logs
+VOCAB_FILE=/workspace/megatron/chris/gpt2-vocab.json
+MERGE_FILE=/workspace/megatron/chris/gpt2-merges.txt
+DATA_PATH=/workspace/megatron/datasets/my-gpt2_text_document 
 
 DISTRIBUTED_ARGS=(
     --nproc_per_node $GPUS_PER_NODE 
@@ -26,35 +26,37 @@ DISTRIBUTED_ARGS=(
 )
 
 GPT_MODEL_ARGS=(
-    --num-layers 96 
-    --hidden-size 12288 
-    --num-attention-heads 96 
+    --num-layers 24 
+    --hidden-size 1024
+    --num-attention-heads 16
     --seq-length 2048 
     --max-position-embeddings 2048 
     --attention-backend auto # Can use (flash/fused/unfused/local)
 )
 
 TRAINING_ARGS=(
-    --micro-batch-size 1 
-    --global-batch-size 1536 
-    --rampup-batch-size 16 16 5859375 
+    --micro-batch-size 16 
+    --global-batch-size 256 
+    #--rampup-batch-size 16 16 5859375 
     --train-iters 500000 
     --weight-decay 0.1 
     --adam-beta1 0.9 
     --adam-beta2 0.95 
     --init-method-std 0.006 
     --clip-grad 1.0 
-    --fp16
+    --bf16
     --lr 6.0e-5 
     --lr-decay-style cosine 
     --min-lr 6.0e-6
     --lr-warmup-fraction .001 
     --lr-decay-iters 430000 
+    #--check_for_nan_in_loss_and_grad 
+    #--check_for_spiky_loss
 )
 
 MODEL_PARALLEL_ARGS=(
 	--tensor-model-parallel-size 8 
-	--pipeline-model-parallel-size 16 
+	--pipeline-model-parallel-size 1 
 )
 
 DATA_ARGS=(
